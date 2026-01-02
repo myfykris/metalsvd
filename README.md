@@ -114,5 +114,14 @@ For high-precision needs, we provide **Golub-Kahan-Lanczos**:
 - [ ] **Complex Number Support**: Implementation of $2 \times 2$ unitary rotations for complex SVD.
 - [ ] **Binary Wheels**: CI/CD pipeline for pre-built PyPI packages.
 
+## Development & AI Context
+This repository includes a `.agent/` directory containing detailed context for AI agents and developers:
+- **[Architecture](.agent/architecture.md)**: System design explanation (C++/Metal/Python bridge).
+- **[Benchmarks](.agent/benchmarks.md)**: Detailed verification and performance reports.
+- **[Roadmap](.agent/release_roadmap.md)**: Future goals.
+- **[Task History](.agent/task.md)**: Checklist of completed work.
+
+Agents starting work on this repo should read `.agent/architecture.md` first.
+
 ## License
 MIT
