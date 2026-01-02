@@ -1,0 +1,20 @@
+# Build Artifacts
+build/
+dist/
+*.egg-info/
+unneeded/
+*.so
+*.dylib
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+
+# Logs
+*.log
