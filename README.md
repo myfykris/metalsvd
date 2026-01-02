@@ -148,7 +148,7 @@ For large matrices:
 
 ### Lanczos Bidiagonalization
 
-Implements **Golub–Kahan–Lanczos** with full re-orthogonalization for numerical stability in `float32`.
+Implements **Golub–Kahan–Lanczos** with full re-orthogonalization for numerical stability in `float32`.  For numerically challenging matrices, users should prefer this mode over randomized SVD.
 
 ---
 
