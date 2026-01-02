@@ -70,5 +70,33 @@ def test_svd_correctness():
     ort_err_v = (VTV - I).abs().max().item()
     print(f"V Orthogonality Error: {ort_err_v:.6f}")
 
+def test_svd_autograd():
+    print("\nTesting Autograd (Backward Pass)...")
+    if not torch.backends.mps.is_available():
+        print("Skipping: MPS not available")
+        return
+
+    device = torch.device('mps')
+    B, M, N = 2, 32, 32
+    A = torch.randn(B, M, N, device=device, requires_grad=True)
+    
+    # Forward
+    U, S, V = metalsvd.svd(A)
+    
+    # Loss: maximize sum of singular values (nuclear norm)
+    loss = S.sum()
+    
+    # Backward
+    loss.backward()
+    
+    print(f"A.grad shape: {A.grad.shape}")
+    if A.grad is None:
+        print("FAIL: Gradient is None")
+    elif A.grad.abs().sum() == 0:
+        print("FAIL: Gradient is zero (vanishing?)")
+    else:
+        print(f"PASS: Gradient computed. Norm: {A.grad.norm():.2f}")
+
 if __name__ == "__main__":
     test_svd_correctness()
+    test_svd_autograd()

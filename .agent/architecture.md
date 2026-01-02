@@ -25,3 +25,20 @@
 ## Design Decisions
 - **Embedded Metal**: We store the Metal source as a string in the C++ binary. This simplifies distribution (no separate `.metallib` file management) at the cost of a small compilation hit on first run.
 - **Monkeypatching**: We deliberately provide a mechanism to overwrite `torch.linalg.svd` to allow users to upgrade existing codebases with zero refactoring.
+
+## Developer Notes & Gotchas
+
+### 1. The "Stale Encoder" Segfault
+**Symptom**: `segmentation fault` at subclass `[encoder setComputePipelineState:]`.
+**Cause**: Calling complex PyTorch operations (like `tensor.to(device)` or `torch.empty(..., device='mps')`) *after* fetching `stream->commandEncoder()` causes the underlying Metal Command Buffer to be committed or modified by PyTorch's internal pool. This invalidates the retrieved `id<MTLComputeCommandEncoder>` pointer.
+**Solution**: ALWAYS perform all tensor allocations, copies (`.to()`), and shape calculations *before* calling `stream->commandEncoder()`. Once you fetch the encoder, strictly perform dispatch operations only.
+
+### 2. Metal Versioning on MPS
+**Symptom**: Crash or `nil` PSO (Pipeline State Object) when `options.languageVersion = MTLLanguageVersion3_0` is set.
+**Cause**: Not all Apple Silicon devices/OS combinations report strict Metal 3.0 compliance in the way `MTLCompileOptions` expects, even if they support the features.
+**Solution**: Rely on the default compiler version (leave `languageVersion` unset) unless strictly necessary. For `bfloat16`, check `__METAL_VERSION__ >= 310` inside the shader code rather than forcing the compiler version host-side.
+
+### 3. Fused Kernel Safety
+**Symptom**: Race conditions or incorrect reductions in block-Jacobi.
+**Constraint**: The Fused Block-Jacobi kernel (`svd_fused_block_kernel`) enforces `ThreadsPerPair = 1` in the host dispatch logic. While technically inefficient (low occupancy), it is orders of magnitude faster than launching individual kernels for each step ($O(1)$ launch vs $O(N)$ launches). Increasing `ThreadsPerPair` requires careful verification of SIMD-group (wavefront) execution widths, which vary between M1 (32) and other architectures.
+

@@ -31,16 +31,25 @@ def randomized_svd(A: torch.Tensor, k: int, n_iter: int = 2, q: int = None):
         k_over += 1
     
     # Omega size: (*batch_dims, N, k_over)
-    Omega = torch.randn(*batch_dims, N, k_over, device=device)
+    Omega = torch.randn(*batch_dims, N, k_over, device=device, dtype=A.dtype)
     
     # 2. Compute Sketch Y = A @ Omega (..., M, N) @ (..., N, k_over) -> (..., M, k_over)
-    Y = torch.matmul(A, Omega)
+    # Perform sketch in FP32 to avoid overflow/underflow if A is FP16.
+    dtype_orig = A.dtype
+    if dtype_orig == torch.float16 or dtype_orig == torch.bfloat16:
+        # Cast inputs to float32 for the randomized loop
+        A_f32 = A.to(torch.float32)
+        Omega_f32 = Omega.to(torch.float32)
+        Y = torch.matmul(A_f32, Omega_f32)
+    else:
+        A_f32 = A
+        Y = torch.matmul(A, Omega)
     
     # 3. Power Iteration
     for _ in range(n_iter):
         # Z = A.T @ Y
         # A.transpose(-2, -1) handles batch transpose correctly
-        At = A.transpose(-2, -1)
+        At = A_f32.transpose(-2, -1)
         Z = torch.matmul(At, Y)
         
         # Orthogonalize Z
@@ -55,7 +64,7 @@ def randomized_svd(A: torch.Tensor, k: int, n_iter: int = 2, q: int = None):
         Q_Z, _, _ = metal_svd(Z)
         
         # Y = A @ Q_Z
-        Y = torch.matmul(A, Q_Z)
+        Y = torch.matmul(A_f32, Q_Z)
         
         # Orthogonalize Y
         Q_Y, _, _ = metal_svd(Y)
@@ -68,7 +77,7 @@ def randomized_svd(A: torch.Tensor, k: int, n_iter: int = 2, q: int = None):
     # Q: (..., M, k_over). A: (..., M, N)
     # B = Q.transpose(-2, -1) @ A -> (..., k_over, N)
     Qt = Q.transpose(-2, -1)
-    B = torch.matmul(Qt, A)
+    B = torch.matmul(Qt, A_f32)
     
     # 6. SVD of B
     # B.T: (..., N, k_over)
@@ -88,4 +97,10 @@ def randomized_svd(A: torch.Tensor, k: int, n_iter: int = 2, q: int = None):
     # U_final: (..., M, k_over)
     # U_BT: (..., N, k_over) (This is actually V of final result)
     
+    # Cast back if needed
+    if dtype_orig != A_f32.dtype:
+        U_final = U_final.to(dtype_orig)
+        S_B = S_B.to(dtype_orig)
+        U_BT = U_BT.to(dtype_orig)
+        
     return U_final[..., :k], S_B[..., :k], U_BT[..., :k]

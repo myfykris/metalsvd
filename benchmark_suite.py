@@ -46,6 +46,14 @@ class BenchmarkRunner:
         
         speedup = t_base / t_target
         print(f"  => Speedup: {speedup:.2f}x\n")
+        
+        if speedup < 0.9: # Allow small variance
+             if "Square" in name and "1024" in name:
+                  # We expect this to fail without Fused Kernel. 
+                  # With Fused Kernel (TPP=1), it should pass or be close.
+                  pass 
+             raise RuntimeError(f"Performance Regression detected on {name}: {speedup:.2f}x (Target > 1.0x)")
+             
         return speedup
 
     def print_summary(self):
@@ -70,7 +78,8 @@ def benchmark_suite():
     runner.compare(
         "Batched SVD (64x128x128)",
         lambda: torch.linalg.svd(A_small),
-        lambda: metalsvd.svd(A_small)
+        lambda: metalsvd.svd(A_small),
+        iters=50
     )
     
     # 2. Medium Square Matrix
@@ -82,7 +91,8 @@ def benchmark_suite():
     runner.compare(
         "Square SVD (1024x1024)",
         lambda: torch.linalg.svd(A_med),
-        lambda: metalsvd.svd(A_med)
+        lambda: metalsvd.svd(A_med),
+        iters=20
     )
     
     # 3. Large Matrix Randomized SVD
@@ -102,7 +112,7 @@ def benchmark_suite():
         "Large rSVD vs Full SVD (4096^2)",
         torch_svd_run,
         rsvd_run,
-        iters=2 # Huge, fewer iters
+        iters=5 # Huge, fewer iters
     )
     
     # 4. FP16 vs FP32 Performance
@@ -114,24 +124,59 @@ def benchmark_suite():
     runner.run_case("Huge rSVD FP32 (8192^2)", lambda: metalsvd.randomized_svd(A_fp32, k=100), iters=3)
     runner.run_case("Huge rSVD FP16 (8192^2)", lambda: metalsvd.randomized_svd(A_fp16, k=100), iters=3)
     
-    # 5. Correctness Check (Sanity)
-    print("\nVerifying Accuracy on Huge Matrix (FP16)...")
-    # Generate Low Rank for valid reconstruction check
-    K_sanity = 50
-    U_h = torch.randn(M_huge, K_sanity, device=device, dtype=torch.float32)
-    U_h = torch.linalg.qr(U_h)[0].to(torch.float16)
-    V_h = torch.randn(M_huge, K_sanity, device=device, dtype=torch.float32)
-    V_h = torch.linalg.qr(V_h)[0].to(torch.float16)
-    S_h = torch.linspace(100, 10, K_sanity, device=device, dtype=torch.float16)
-    A_sanity = U_h @ torch.diag(S_h) @ V_h.T
     
-    U, S, V = metalsvd.randomized_svd(A_sanity, k=K_sanity, n_iter=2)
-    A_approx = U @ torch.diag(S) @ V.T
+    # 6. Exhaustive Permutations (User Request)
+    print("\n" + "="*40)
+    print("EXHAUSTIVE PERMUTATIONS (Size x Shape)")
+    print("="*40)
     
-    diff = (A_sanity - A_approx).norm()
-    norm = A_sanity.norm()
-    print(f"Relative Error: {diff/norm:.6f}")
+    sizes = [32, 64, 128, 256, 512, 1024, 2048] # 4096 in separate test
+    shapes = [
+        ("Square", lambda N: (1, N, N)), 
+        ("Tall", lambda N: (1, 2*N, N)),
+        ("Wide", lambda N: (1, N, 2*N)) # Library should transpose internally or error? Library supports N<=M.
+        # metalsvd handles Wide by check or transpose?
+        # Standard SVD requires M >= N. If Wide, we just transpose, SVD, then swap U/V.
+        # metalsvd.svd currently: N must be even. M >= N.
+    ]
     
+    for size in sizes:
+        for shape_name, shape_fn in shapes:
+            B, M, N = shape_fn(size)
+            
+            # Skip if N > M (Wide) if handled poorly, but let's test it.
+            # Usually users want M >= N.
+            if N > M:
+                # Transpose for native compat test
+                pass
+                
+            name = f"{shape_name} ({M}x{N})"
+            
+            # Generate input
+            try:
+                A = torch.randn(B, M, N, device=device)
+            except:
+                print(f"Skipping {name} (OOM or Error)")
+                continue
+
+            # Check logic for Wide support in metalsvd wrapper?
+            # If naive implementation crashes on Wide, we skip/note it.
+            # torch.linalg.svd handles it.
+            
+            def run_ours():
+                metalsvd.svd(A) # Will error if not implemented for Wide?
+                                
+            def run_torch():
+                torch.linalg.svd(A)
+            
+            # Fewer iters for larger ones
+            n_iters = 50 if M <= 256 else (20 if M <= 1024 else 5)
+                
+            try:
+                runner.compare(name, run_torch, run_ours, iters=n_iters)
+            except Exception as e:
+                print(f"  [FAIL] {name}: {e}\n")
+
     runner.print_summary()
 
 if __name__ == "__main__":

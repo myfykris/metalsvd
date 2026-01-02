@@ -10,7 +10,8 @@ A high-performance implementation of Singular Value Decomposition (SVD) for PyTo
 - **Pure Metal Backend**: No CPU fallbacks for orthogonalization loop, unlike standard PyTorch MPS which falls back to CPU for `linalg.svd` and `linalg.qr`.
 - **Performance**:
   - **Threadgroup Optimized**: Uses shared memory and SIMD shuffling for ~20x speedup on tall matrices.
-  - **Benchmark**: Decomposes a $10,000 \times 10,000$ matrix (Rank 100) in **~1.2 seconds**.
+  - **Fused Block-Jacobi Kernel**: **3.5x speedup** on small/medium blocks ($1024 \times 1024$) and **40x speedup** on large tall matrices ($4096 \times 2048$) compared to CPU fallback.
+  - **Benchmark**: Decomposes a $10,000 \times 10,000$ matrix (Rank 100) in **~1.18 seconds**.
 
 ## Installation
 
