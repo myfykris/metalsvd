@@ -1,5 +1,5 @@
 import torch
-import mpssvd_backend
+import metalsvd_backend
 
 def svd(A: torch.Tensor):
     """
@@ -30,7 +30,7 @@ class SVDAutograd(torch.autograd.Function):
         A_pad = A_pad.contiguous()
 
         # Run Backend SVD
-        U, S, V = mpssvd_backend.svd_forward(A_pad)
+        U, S, V = metalsvd_backend.svd_forward(A_pad)
         
         # Sort (Backend might not sort)
         S_sorted, indices = torch.sort(S, dim=-1, descending=True)

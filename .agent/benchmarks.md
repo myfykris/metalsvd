@@ -18,13 +18,13 @@ The implementation is verified against `torch.linalg.svd` (CPU/LAPACK reference)
 
 ### 1. Small Matrix Batches (Transformers/LoRA)
 **Workload**: Batch=64, $128 \times 128$ Matrices
-- **mpssvd**: ~215ms
+- **metalsvd**: ~215ms
 - **torch.svd (CPU)**: ~58ms
 > **Note**: For very small matrices, the CPU fallback is faster due to the overhead of launching ~1200 Metal kernels from Python.
 
 ### 2. Large Scale (Randomized SVD)
 **Workload**: $10,000 \times 10,000$ Matrix, Rank 100
-- **mpssvd (rSVD)**: **1.18s**
+- **metalsvd (rSVD)**: **1.18s**
 - **Accuracy**: `3e-6` Relative Error
 - **Architecture**:
   - Uses **Threadgroup Reduction** kernel.

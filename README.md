@@ -1,4 +1,4 @@
-# MPS SVD: Accelerated SVD for PyTorch on Apple Silicon
+# Metal SVD: Accelerated SVD for PyTorch on Apple Silicon
 
 A high-performance implementation of Singular Value Decomposition (SVD) for PyTorch on macOS Metal (Apple Silicon M1/M2/M3). Supports **any matrix shape** (Wide, Tall, Square) and **any size** (from small batched tensors to large-scale dense matrices).
 
@@ -26,8 +26,8 @@ A high-performance implementation of Singular Value Decomposition (SVD) for PyTo
 
 ### Build from Source
 ```bash
-git clone https://github.com/myfykris/mpssvd.git
-cd mpssvd
+git clone https://github.com/myfykris/metalsvd.git
+cd metalsvd
 pip install .
 ```
 
@@ -38,24 +38,24 @@ Best for batches of small matrices (e.g., Transformers heads, LoRA adapters).
 
 ```python
 import torch
-import mpssvd
+import metalsvd
 
 device = torch.device('mps')
 # Shape: (Batch, Rows, Cols)
 A = torch.randn(64, 128, 128, device=device)
 
 # U, S, V such that A = U @ diag(S) @ V.T
-U, S, V = mpssvd.svd(A)
+U, S, V = metalsvd.svd(A)
 
 print(U.shape) # (64, 128, 128)
 ```
 
 ### 2. Seamless Integration (Monkeypatching)
-Drop-in replacement for existing codebases. Automatically routes MPS tensors to `mpssvd` while keeping CPU/CUDA behavior unchanged.
+Drop-in replacement for existing codebases. Automatically routes MPS tensors to `metalsvd` while keeping CPU/CUDA behavior unchanged.
 
 ```python
-import mpssvd
-mpssvd.patch_torch()
+import metalsvd
+metalsvd.patch_torch()
 
 # Now torch.linalg.svd uses our Metal backend for MPS tensors!
 U, S, Vh = torch.linalg.svd(A, full_matrices=False)
@@ -66,14 +66,14 @@ Best for large matrices where you only need the top-$k$ singular values/vectors.
 
 ```python
 import torch
-import mpssvd
+import metalsvd
 
 M, N = 10000, 10000
 K = 100
 A = torch.randn(M, N, device=device)
 
 # Decompose
-U, S, V = mpssvd.randomized_svd(A, k=K, n_iter=2)
+U, S, V = metalsvd.randomized_svd(A, k=K, n_iter=2)
 
 # Verify
 A_approx = U @ torch.diag(S) @ V.T
@@ -84,11 +84,11 @@ print(f"Approximation Error: {(A - A_approx).norm() / A.norm():.2e}")
 Best for precision on large matrices with slowly decaying spectra where Randomized SVD might struggle.
 
 ```python
-import mpssvd
+import metalsvd
 
 # Finds top-k singular values using Golub-Kahan Bidiagonalization with Full Re-orthogonalization
 # Slower than rSVD but deterministic and robust.
-U, S, V = mpssvd.lanczos_svd(A, k=10, n_iter=30)
+U, S, V = metalsvd.lanczos_svd(A, k=10, n_iter=30)
 ```
 
 ## How It Works

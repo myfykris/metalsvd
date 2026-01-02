@@ -1,5 +1,5 @@
 import torch
-from .func import svd as mps_svd
+from .func import svd as metal_svd
 
 def randomized_svd(A: torch.Tensor, k: int, n_iter: int = 2, q: int = None):
     """
@@ -44,25 +44,25 @@ def randomized_svd(A: torch.Tensor, k: int, n_iter: int = 2, q: int = None):
         Z = torch.matmul(At, Y)
         
         # Orthogonalize Z
-        # mps_svd handles batches if we pass correct structure.
+        # metal_svd handles batches if we pass correct structure.
         # But my mps_svd wrapper now squeezes 2D inputs?
-        # If Z is batched, mps_svd works.
-        # If Z is (M, k), mps_svd(Z) returns (k), etc.
-        # Wait, mps_svd(Z) returns U, S, V.
+        # If Z is batched, metal_svd works.
+        # If Z is (M, k), metal_svd(Z) returns (k), etc.
+        # Wait, metal_svd(Z) returns U, S, V.
         # if Z is (..., N, k_over)
         # We need to ensure Z is treated correctly.
-        # mps_svd expects (..., Rows, Cols).
-        Q_Z, _, _ = mps_svd(Z)
+        # metal_svd expects (..., Rows, Cols).
+        Q_Z, _, _ = metal_svd(Z)
         
         # Y = A @ Q_Z
         Y = torch.matmul(A, Q_Z)
         
         # Orthogonalize Y
-        Q_Y, _, _ = mps_svd(Y)
+        Q_Y, _, _ = metal_svd(Y)
         Y = Q_Y
         
     # 4. Orthogonalize Y to get Q
-    Q, _, _ = mps_svd(Y)
+    Q, _, _ = metal_svd(Y)
     
     # 5. Form B = Q.T @ A
     # Q: (..., M, k_over). A: (..., M, N)
@@ -73,7 +73,7 @@ def randomized_svd(A: torch.Tensor, k: int, n_iter: int = 2, q: int = None):
     # 6. SVD of B
     # B.T: (..., N, k_over)
     Bt = B.transpose(-2, -1)
-    U_BT, S_B, V_BT = mps_svd(Bt)
+    U_BT, S_B, V_BT = metal_svd(Bt)
     
     # B approx U_BT S_B V_BT.T (if we did SVD of B directly)
     # But we did SVD of B.T = U_BT S_B V_BT.T

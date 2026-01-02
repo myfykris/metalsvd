@@ -6,7 +6,7 @@ _original_svd = None
 
 def patch_torch():
     """
-    Monkeypatches torch.linalg.svd to use mpssvd.svd for MPS tensors.
+    Monkeypatches torch.linalg.svd to use metalsvd.svd for MPS tensors.
     """
     global _original_svd
     import torch
@@ -65,5 +65,5 @@ def patch_torch():
     # Also patch torch.svd? (Deprecated but used)
     # torch.svd returns U, S, V (not Vh).
     
-    print("MPS SVD patched into torch.linalg.svd")
+    print("Metal SVD patched into torch.linalg.svd")
 

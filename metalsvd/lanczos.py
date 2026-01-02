@@ -1,5 +1,5 @@
 import torch
-from .func import svd as mps_svd
+from .func import svd as metal_svd
 
 def lanczos_svd(A: torch.Tensor, k: int, n_iter: int = None, tol: float = 1e-5):
     """
@@ -173,8 +173,8 @@ def lanczos_svd(A: torch.Tensor, k: int, n_iter: int = None, tol: float = 1e-5):
     # B is lower bidiagonal.
     # mps_svd handles general matrices.
     # But B is (K+1, K).
-    Ub, Sb, Vb = mps_svd(B.unsqueeze(0))
-    Ub = Ub.squeeze(0) # (K+1, K+1) or (K+1, K) depending on implementation (mps_svd returns full U)
+    Ub, Sb, Vb = metal_svd(B.unsqueeze(0))
+    Ub = Ub.squeeze(0) # (K+1, K+1) or (K+1, K) depending on implementation (metal_svd returns full U)
     Sb = Sb.squeeze(0) # (K)
     Vb = Vb.squeeze(0) # (K, K)
     
@@ -185,7 +185,7 @@ def lanczos_svd(A: torch.Tensor, k: int, n_iter: int = None, tol: float = 1e-5):
     U_final = torch.mm(U_basis[:, :n_found+1], Ub)
     V_final = torch.mm(V_basis[:, :n_found], Vb) # Vb columns are singular vectors of B.
     
-    # Note: Vb from mps_svd is V (not V.T).
+    # Note: Vb from metal_svd is V (not V.T).
     # B approx Ub Sb Vb.T
     # A V = U B approx U (Ub Sb Vb.T)
     # A (V Vb) = (U Ub) Sb

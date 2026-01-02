@@ -412,5 +412,5 @@ std::vector<torch::Tensor> svd_forward(torch::Tensor A) {
 }
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
-  m.def("svd_forward", &svd_forward, "SVD Forward (MPS)");
+  m.def("svd_forward", &svd_forward, "SVD Forward (Metal)");
 }

@@ -1,5 +1,5 @@
 import torch
-import mpssvd
+import metalsvd
 import time
 
 def test_svd_correctness():
@@ -20,7 +20,7 @@ def test_svd_correctness():
     
     # Run Custom SVD
     start = time.time()
-    U, S, V = mpssvd.svd(A)
+    U, S, V = metalsvd.svd(A)
     torch.mps.synchronize()
     end = time.time()
     print(f"Custom SVD took: {(end - start)*1000:.2f} ms")

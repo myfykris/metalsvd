@@ -1,7 +1,7 @@
 # System Architecture
 
 ## Overview
-`mpssvd` provides a high-performance SVD implementation for PyTorch on macOS by bypassing the generic MPS fallback and executing custom Metal kernels.
+`metalsvd` provides a high-performance SVD implementation for PyTorch on macOS by bypassing the generic MPS fallback and executing custom Metal kernels.
 
 ## Components
 
@@ -18,7 +18,7 @@
   - **Shared Memory**: Caches reduction results to minimize VRAM round-trips.
 - **Templating**: Uses C++ templates in MSL to instantiate `half` and `bfloat` variants from a single source of truth.
 
-### 3. Python Wrapper (`mpssvd/func.py`)
+### 3. Python Wrapper (`metalsvd/func.py`)
 - **Autograd**: Implements a custom `torch.autograd.Function`. The backward pass is computed analytically using the standard SVD gradient formula in pure PyTorch (efficient since $U, S, V$ are already on GPU).
 - **Wide Matrices ($M < N$)**: Automatically handles wide inputs by transposing, calling SVD, and swapping $U/V$.
 
