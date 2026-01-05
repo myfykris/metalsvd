@@ -1,3 +1,15 @@
+# metalsvd (DEPRECATED)
+
+🚨 **This project is deprecated.**
+
+👉 Active replacement: https://github.com/myfykris/metalops
+
+Do not use this repository.
+
+---
+---
+---
+
 # MetalSVD: GPU SVD for PyTorch MPS (Apple Silicon, No CPU Fallback)
 
 **Problem:** PyTorch does **not** support `torch.linalg.svd` / `torch.svd` on the MPS backend. On Apple Silicon, these operations either error or fall back to the CPU, causing severe performance regressions.
